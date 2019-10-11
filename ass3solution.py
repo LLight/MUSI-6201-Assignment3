@@ -10,7 +10,7 @@ import math
 import matplotlib.pyplot as plt
 
 #Block audio function
-def  block_audio(x,blockSize,hopSize,fs):
+def block_audio(x,blockSize,hopSize,fs):
     # allocate memory
     numBlocks = math.ceil(x.size / hopSize)
     xb = np.zeros([numBlocks, blockSize])
@@ -34,7 +34,7 @@ def  block_audio(x,blockSize,hopSize,fs):
 # inputs: xb=block, fs=sample rate
 # outputs: X = magnitude spectrogram (dimensions blockSize/2+1 X numBlocks), fInHz = central frequency of each bin (dim blockSize/2+1,)
 def compute_spectrogram(xb, fs):
-
+    
     return (X, fInHz)
 
 #A2. track_pitch_fftmax estimates the fundamental frequency f0 of the audio signal
@@ -52,6 +52,23 @@ def track_pitch_fftmax(x, blockSize, hopSize, fs):
 
 def get_f0_from_Hps(X, fs, order):
 
+    # FFT point is the same as blockSize
+    FFT_point = (X.shape[0] - 1) * 2
+    f0 = []
+    # block wise HPS
+    for i in range(0,X.shape[1]):
+        X1 = X[:,i]
+        X_hps = np.ones((X1.shape[0], 1))
+        for k in range(0,X_hps.shape[0]):
+            for j in range(1,order+1):
+                if j*k < X_hps.shape[0]:
+                    X_hps[k,1] = X_hps[k,1] * math.pow(X1[j*k,1],2)
+        # f0 at the peak of HPS
+        freq_bin = np.argmax(X_hps)
+        freq = freq_bin * fs / FFT_point
+        f0.append(freq)
+    f0 = np.array(f0)
+
     return f0
 
 #B2. track_pitch_hps calls compute_spectrogram with order 4 to estimate the fundamental frequency f0 of the audio signal
@@ -60,6 +77,10 @@ def get_f0_from_Hps(X, fs, order):
 
 def track_pitch_hps(x, blockSize, hopSize, fs):
 
+    xb,t = block_audio(x,1024,hopSize,fs)
+    X, fInHz = compute_spectrogram(xb, fs)
+    f0 = get_f0_from_Hps(X, fs, 4)
+    timeInSec = t
     return (f0, timeInSec)
 
 ######################################################
