@@ -40,66 +40,34 @@ def compute_hann(iWindowLength):
 # inputs: xb=block, fs=sample rate
 # outputs: X = magnitude spectrogram (dimensions blockSize/2+1 X numBlocks), fInHz = central frequency of each bin (dim blockSize/2+1)
 def compute_spectrogram(xb, fs):
-    numBlocks = xb.shape[0]
-    afWindow = compute_hann(xb.shape[1])
-    X = np.zeros([math.ceil(xb.shape[1] / 2 + 1), numBlocks])
-    fInHz = np.zeros([math.ceil(xb.shape[1] / 2 + 1)])
-
-    for n in range(0, numBlocks):
-        # apply window
-        tmp = abs(sp.fft(xb[n, :] * afWindow)) * 2 / xb.shape[1]
-
-        # compute magnitude spectrum
-        X[:, n] = tmp[range(math.ceil(tmp.size / 2 + 1))]
-### do we need to normalize? commented out for now
-        # X[[0, math.ceil(tmp.size / 2)], n] = X[[0, math.ceil(tmp.size / 2)], n] / np.sqrt(2)
-
-### is this correct? need to verify
-        # get central frequency of each bin
-        for i in range(0, len(fInHz)):
-            fInHz[i] = i * fs / len(fInHz)
-
-    # (NumOfBlocks, blockSize) = xb.shape
-    FFT_point = blockSize = 1024
-    hann = compute_hann(blockSize)
-    # print(hann.shape)
-
-    # X = []
-    # fInHz = []
-    # for b in xb:
-    #     f, t, Sxx = spectrogram(xb, fs, window=hann, nfft=FFT_point)
-    #     print(f.shape)
-    #     print(Sxx.shape)
-    #     X.append(Sxx)
-    #     fInHz.append(f)
-
-    fInHz, t, X = spectrogram(xb, fs, window=hann, nfft=FFT_point)
-    plt.pcolormesh(t, fInHz, X)
-    plt.ylabel('Frequency [Hz]')
-    plt.xlabel('Time [sec]')
-    plt.show()
+    (NumOfBlocks, blockSize) = xb.shape
+    hann = compute_hann(iWindowLength=blockSize)
+    fInHz, t, X = spectrogram(xb, fs, window=hann, nfft=blockSize)
+    ##need to move the plt and print statements to main section at the end
+    # plt.pcolormesh(t, fInHz, X)
+    # plt.ylabel('Frequency [Hz]')
+    # plt.xlabel('Time [sec]')
+    # plt.show()
     X = np.array(X)
     fInHz = np.array(fInHz)
-    print(X.shape)
-    print(fInHz.shape)
+   # print(X.shape)
+   # print(fInHz.shape)
     return (X, fInHz)
 
 
 #A2. track_pitch_fftmax estimates the fundamental frequency f0 of the audio signal
 # based on a block-wise maximum spectral peak finding approach
 def track_pitch_fftmax(x, blockSize, hopSize, fs):
-    (xb, timeInSec) = block_audio(x=testSignal, blockSize=1024, hopSize=512, fs=44100)
-    (X, fInHz) = compute_spectrogram(xb=xb, fs=44100)
+    (xb, timeInSec) = block_audio(x, blockSize, hopSize, fs)
+    (X, fInHz) = compute_spectrogram(xb, fs)
 
-    # get max of each block
-    max = np.zeros(len(fInHz))
-    for block in X:
-        max[block] = max(X[block])
-
-    # TBD: find fundamental frequency of each block
-
-
-#     return (f0,timeInSec)
+    # get index of max magnitude within each block and the corresponding frequency
+    nBlocks = len(timeInSec)
+    f0 = np.zeros(nBlocks)
+    for block in range(0, nBlocks - 1):
+        i = np.argmax(X[block, :, 0])
+        f0[block] = fInHz[i]
+    return (f0, timeInSec)
 
 ########################################################
 #B HPS (Harmonic Product Spectrum) based pitch tracker
