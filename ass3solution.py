@@ -8,9 +8,11 @@
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from scipy.io.wavfile import read
+from scipy.signal import spectrogram
 
 #Block audio function
-def  block_audio(x,blockSize,hopSize,fs):
+def block_audio(x,blockSize,hopSize,fs):
     # allocate memory
     numBlocks = math.ceil(x.size / hopSize)
     xb = np.zeros([numBlocks, blockSize])
@@ -26,6 +28,10 @@ def  block_audio(x,blockSize,hopSize,fs):
         xb[n][np.arange(0,blockSize)] = x[np.arange(i_start, i_stop + 1)]
 
     return (xb,t)
+
+#Hann window function
+def compute_hann(iWindowLength):
+    return 0.5 - (0.5 * np.cos(2 * np.pi / iWindowLength * np.arange(iWindowLength)))
 
 ######################################################
 #A. Maximum spectral peak based pitch tracker
@@ -53,7 +59,31 @@ def compute_spectrogram(xb, fs):
         for i in range(0, len(fInHz)):
             fInHz[i] = i * fs / len(fInHz)
 
+    # (NumOfBlocks, blockSize) = xb.shape
+    FFT_point = blockSize = 1024
+    hann = compute_hann(blockSize)
+    # print(hann.shape)
+
+    # X = []
+    # fInHz = []
+    # for b in xb:
+    #     f, t, Sxx = spectrogram(xb, fs, window=hann, nfft=FFT_point)
+    #     print(f.shape)
+    #     print(Sxx.shape)
+    #     X.append(Sxx)
+    #     fInHz.append(f)
+
+    fInHz, t, X = spectrogram(xb, fs, window=hann, nfft=FFT_point)
+    plt.pcolormesh(t, fInHz, X)
+    plt.ylabel('Frequency [Hz]')
+    plt.xlabel('Time [sec]')
+    plt.show()
+    X = np.array(X)
+    fInHz = np.array(fInHz)
+    print(X.shape)
+    print(fInHz.shape)
     return (X, fInHz)
+
 
 #A2. track_pitch_fftmax estimates the fundamental frequency f0 of the audio signal
 # based on a block-wise maximum spectral peak finding approach
@@ -68,7 +98,8 @@ def track_pitch_fftmax(x, blockSize, hopSize, fs):
 
     # TBD: find fundamental frequency of each block
 
-    return (f0,timeInSec)
+
+#     return (f0,timeInSec)
 
 ########################################################
 #B HPS (Harmonic Product Spectrum) based pitch tracker
@@ -79,6 +110,25 @@ def track_pitch_fftmax(x, blockSize, hopSize, fs):
 
 def get_f0_from_Hps(X, fs, order):
 
+    # FFT point is the same as blockSize
+    FFT_point = (X.shape[0] - 1) * 2
+    f0 = []
+    # block wise HPS
+    for i in range(0,X.shape[1]):
+        X1 = X[:,i]
+        # print(X1.shape)
+        X_hps = np.ones(X1.shape[0])
+        for k in range(0,X_hps.shape[0]):
+            for j in range(1,order+1):
+                if j*k < X_hps.shape[0]:
+                    X_hps[k] = X_hps[k] * math.pow(X1[j*k],2)
+        # f0 at the peak of HPS
+        freq_bin = np.argmax(X_hps)
+        freq = freq_bin * fs / FFT_point
+        f0.append(freq)
+    f0 = np.array(f0)
+    print(f0.shape)
+    
     return f0
 
 #B2. track_pitch_hps calls compute_spectrogram with order 4 to estimate the fundamental frequency f0 of the audio signal
@@ -87,6 +137,10 @@ def get_f0_from_Hps(X, fs, order):
 
 def track_pitch_hps(x, blockSize, hopSize, fs):
 
+    xb,t = block_audio(x,1024,hopSize,fs)
+    X, fInHz = compute_spectrogram(xb, fs)
+    f0 = get_f0_from_Hps(X, fs, 4)
+    timeInSec = t
     return (f0, timeInSec)
 
 ######################################################
@@ -96,6 +150,16 @@ def track_pitch_hps(x, blockSize, hopSize, fs):
 # input: xb=block
 # output: rmsDb = vector of RMS values in decibels
 def extract_rms(xb):
+    rms_matrix = []
+    for b in xb:
+        rms = np.sqrt(np.mean(np.square(b)))
+        if rms < 1e-5:
+            rms= 1e-5
+        rms = 20*np.log10(rms)
+        rms_matrix.append(rms)
+    # print(rms_matrix)
+    rmsDb = np.array(rms_matrix) 
+    # print(rmsDb.shape)
 
     return rmsDb
 
@@ -104,6 +168,13 @@ def extract_rms(xb):
 # outputs: mask = binary mask (column vector of the same size as 'rmsDb' containing 0's and 1's).
 #  mask= 0 if rmsDb < thresholdDb, mask = 1 if rmsDb >=threshold
 def create_voicing_mask(rmsDb, thresholdDb):
+    mask = np.zeros(len(rmsDb))
+    for i in range(0, len(rmsDb)):
+        if rmsDb[i] < thresholdDb:
+            mask[i] = 0
+        else:
+            mask[i] = 1
+    # print(mask.shape)
 
     return mask
 
@@ -111,8 +182,11 @@ def create_voicing_mask(rmsDb, thresholdDb):
 # inputs: f0= previously computed fundamental frequency vector, mask = binary column vector
 # outputs f0Adj, a vector of same dimensions as f0
 def apply_voicing_mask(f0, mask):
+    f0Adj = np.multiply(f0, mask)
+    print(f0Adj.shape)
 
     return f0Adj
+
 
 ######################################################
 #D. Evaluation Metrics
@@ -225,3 +299,15 @@ if __name__ == "__main__":
     ax.plot(timeTestMaxPeak2, errMaxPeak2, color='tab:purple', label='Max Peak (blockSize=2048)')
     ax.legend()
     plt.show()
+    
+     fs, audio = read('C:/Users/bhxxl/OneDrive/GT/Computational Music Analysis/HW1/developmentSet/trainData/01-D_AMairena.wav')
+    blockSize = 1024
+    hopSize = 256
+    xb, t = block_audio(audio,blockSize,hopSize,fs)
+    # X, fInHz = compute_spectrogram(audio, fs)
+    # order = 4
+    # f0 = get_f0_from_Hps(X, fs, order)
+    rmsDb = extract_rms(xb)
+    thresholdDb = -20
+    mask = create_voicing_mask(rmsDb, thresholdDb)
+
