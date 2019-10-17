@@ -193,6 +193,49 @@ def eval_pitchtrack_v2(estimation, annotation):
 
     return (errCentRms, pfp, pfn)
 
+#read audio files
+def audio_read(path):
+    samplerate, x = read(path)
+    if x.dtype == 'float32':
+        audio = x
+    else:
+        # change range to [-1,1)
+        if x.dtype == 'uint8':
+            nbits = 8
+        elif x.dtype == 'int16':
+            nbits = 16
+        elif x.dtype == 'int32':
+            nbits = 32
+
+        audio = x / float(2**(nbits - 1))
+
+    # special case of unsigned format
+    if x.dtype == 'uint8':
+        audio = audio - 1.
+
+    if audio.ndim > 1:
+        audio = audio[:, 0]
+
+    return samplerate, audio
+
+#read labels from annotation files
+def read_label(path, estimateTime):
+
+        es_idx = 0
+        pre = -1
+
+        oup = []
+        time = []
+        f = open(path, "r")
+        for x in f:
+            time = float(x.split('     ')[0])
+            if es_idx < len(estimateTime):
+                while es_idx < len(estimateTime) and estimateTime[es_idx] < time and estimateTime[es_idx] > pre:
+                    oup.append(x.split('     ')[2])
+                    pre = estimateTime[es_idx]
+                    es_idx+=1
+        return oup
+
 #E. Evaluation
 
 #E1. generate a test signal (sine wave, f = 441 Hz from 0-1 sec and f = 882 Hz from 1-2 sec),
