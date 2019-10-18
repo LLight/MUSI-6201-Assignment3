@@ -162,14 +162,20 @@ def apply_voicing_mask(f0, mask):
 #D1. eval_voiced_fp computes the percentage of false positives for the fundamental frequency estimation
 
 def eval_voiced_fp(estimation, annotation):
-#denominator = num blocks with annotation = 0
-#numerator = num blocks in the denominator with fundamental freq not equal to 0
+    #denominator = num blocks with annotation = 0
+    denom=sum(f.estimation==0 for f in estimation)
+    #numerator = num blocks in the denominator with fundamental freq not equal to 0
+    num=sum(f.annotation!=0 for f in annotation)
+    pfp=num/denom
     return pfp
 
 #D2. eval_voiced_fn computes the percentage of false negatives
 def eval_voiced_fn(estimation, annotation):
-#denominator = num blocks with non-zero fundamental frequency in the annotation.
-#numerator = num blocks in denominator that were detected as zero
+    #denominator = num blocks with non-zero fundamental frequency in the annotation.
+    denom=sum(f.estimation !=0 for f in estimation)
+    #numerator = num blocks in denominator that were detected as zero
+    num=sum(f.annotation == 0  for f in annotation)
+    pfn=num/denom
     return pfn
 
 #D3. Modified version of eval_pitchtrack from Assignment 1
@@ -178,18 +184,20 @@ def eval_voiced_fn(estimation, annotation):
 def eval_pitchtrack_v2(estimation, annotation):
 ######## Need to modify the eval_pitchtrack function from assignment 1 (copied below).
 ######## Update errCentRMS to take into account zeros in estimation, change variable names, incorporate pfp and pfn
-    if np.abs(groundtruthInHz).sum() <= 0:
-        return 0
 
     # truncate longer vector
-    if groundtruthInHz.size > estimateInHz.size:
-        estimateInHz = estimateInHz[np.arange(0, groundtruthInHz.size)]
-    elif estimateInHz.size > groundtruthInHz.size:
-        groundtruthInHz = groundtruthInHz[np.arange(0, estimateInHz.size)]
+    if annotation.size > annotation.size:
+        estimateInHz = estimation[np.arange(0, annotation.size)]
+    elif estimation.size > annotation.size:
+        annotationInHz = annotation[np.arange(0, estimation.size)]
 
-    diffInCent = 100 * (convert_freq2midi(estimateInHz) - convert_freq2midi(groundtruthInHz))
+    diffInCent = 100 * (convert_freq2midi(estimateInHz) - convert_freq2midi(annotationInHz))
 
-    rms = np.sqrt(np.mean(diffInCent[groundtruthInHz != 0] ** 2))
+    errCentRms = np.sqrt(np.mean(diffInCent ** 2))
+
+    eval_voiced_fn(estimateInHz,annotationInHz)
+
+    eval_voiced_fp(estimateInHz,annotationInHz)
 
     return (errCentRms, pfp, pfn)
 
