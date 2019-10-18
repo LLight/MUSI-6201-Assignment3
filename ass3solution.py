@@ -40,66 +40,34 @@ def compute_hann(iWindowLength):
 # inputs: xb=block, fs=sample rate
 # outputs: X = magnitude spectrogram (dimensions blockSize/2+1 X numBlocks), fInHz = central frequency of each bin (dim blockSize/2+1)
 def compute_spectrogram(xb, fs):
-    numBlocks = xb.shape[0]
-    afWindow = compute_hann(xb.shape[1])
-    X = np.zeros([math.ceil(xb.shape[1] / 2 + 1), numBlocks])
-    fInHz = np.zeros([math.ceil(xb.shape[1] / 2 + 1)])
-
-    for n in range(0, numBlocks):
-        # apply window
-        tmp = abs(sp.fft(xb[n, :] * afWindow)) * 2 / xb.shape[1]
-
-        # compute magnitude spectrum
-        X[:, n] = tmp[range(math.ceil(tmp.size / 2 + 1))]
-### do we need to normalize? commented out for now
-        # X[[0, math.ceil(tmp.size / 2)], n] = X[[0, math.ceil(tmp.size / 2)], n] / np.sqrt(2)
-
-### is this correct? need to verify
-        # get central frequency of each bin
-        for i in range(0, len(fInHz)):
-            fInHz[i] = i * fs / len(fInHz)
-
-    # (NumOfBlocks, blockSize) = xb.shape
-    FFT_point = blockSize = 1024
-    hann = compute_hann(blockSize)
-    # print(hann.shape)
-
-    # X = []
-    # fInHz = []
-    # for b in xb:
-    #     f, t, Sxx = spectrogram(xb, fs, window=hann, nfft=FFT_point)
-    #     print(f.shape)
-    #     print(Sxx.shape)
-    #     X.append(Sxx)
-    #     fInHz.append(f)
-
-    fInHz, t, X = spectrogram(xb, fs, window=hann, nfft=FFT_point)
-    plt.pcolormesh(t, fInHz, X)
-    plt.ylabel('Frequency [Hz]')
-    plt.xlabel('Time [sec]')
-    plt.show()
+    (NumOfBlocks, blockSize) = xb.shape
+    hann = compute_hann(iWindowLength=blockSize)
+    fInHz, t, X = spectrogram(xb, fs, window=hann, nfft=blockSize)
+    ##need to move the plt and print statements to main section at the end
+    # plt.pcolormesh(t, fInHz, X)
+    # plt.ylabel('Frequency [Hz]')
+    # plt.xlabel('Time [sec]')
+    # plt.show()
     X = np.array(X)
     fInHz = np.array(fInHz)
-    print(X.shape)
-    print(fInHz.shape)
+   # print(X.shape)
+   # print(fInHz.shape)
     return (X, fInHz)
 
 
 #A2. track_pitch_fftmax estimates the fundamental frequency f0 of the audio signal
 # based on a block-wise maximum spectral peak finding approach
 def track_pitch_fftmax(x, blockSize, hopSize, fs):
-    (xb, timeInSec) = block_audio(x=testSignal, blockSize=1024, hopSize=512, fs=44100)
-    (X, fInHz) = compute_spectrogram(xb=xb, fs=44100)
+    (xb, timeInSec) = block_audio(x, blockSize, hopSize, fs)
+    (X, fInHz) = compute_spectrogram(xb, fs)
 
-    # get max of each block
-    max = np.zeros(len(fInHz))
-    for block in X:
-        max[block] = max(X[block])
-
-    # TBD: find fundamental frequency of each block
-
-
-#     return (f0,timeInSec)
+    # get index of max magnitude within each block and the corresponding frequency
+    nBlocks = len(timeInSec)
+    f0 = np.zeros(nBlocks)
+    for block in range(0, nBlocks - 1):
+        i = np.argmax(X[block, :, 0])
+        f0[block] = fInHz[i]
+    return (f0, timeInSec)
 
 ########################################################
 #B HPS (Harmonic Product Spectrum) based pitch tracker
@@ -194,14 +162,20 @@ def apply_voicing_mask(f0, mask):
 #D1. eval_voiced_fp computes the percentage of false positives for the fundamental frequency estimation
 
 def eval_voiced_fp(estimation, annotation):
-#denominator = num blocks with annotation = 0
-#numerator = num blocks in the denominator with fundamental freq not equal to 0
+    #denominator = num blocks with annotation = 0
+    denom=sum(f.estimation==0 for f in estimation)
+    #numerator = num blocks in the denominator with fundamental freq not equal to 0
+    num=sum(f.annotation!=0 for f in annotation)
+    pfp=num/denom
     return pfp
 
 #D2. eval_voiced_fn computes the percentage of false negatives
 def eval_voiced_fn(estimation, annotation):
-#denominator = num blocks with non-zero fundamental frequency in the annotation.
-#numerator = num blocks in denominator that were detected as zero
+    #denominator = num blocks with non-zero fundamental frequency in the annotation.
+    denom=sum(f.estimation !=0 for f in estimation)
+    #numerator = num blocks in denominator that were detected as zero
+    num=sum(f.annotation == 0  for f in annotation)
+    pfn=num/denom
     return pfn
 
 #D3. Modified version of eval_pitchtrack from Assignment 1
@@ -210,20 +184,65 @@ def eval_voiced_fn(estimation, annotation):
 def eval_pitchtrack_v2(estimation, annotation):
 ######## Need to modify the eval_pitchtrack function from assignment 1 (copied below).
 ######## Update errCentRMS to take into account zeros in estimation, change variable names, incorporate pfp and pfn
-    if np.abs(groundtruthInHz).sum() <= 0:
-        return 0
 
     # truncate longer vector
-    if groundtruthInHz.size > estimateInHz.size:
-        estimateInHz = estimateInHz[np.arange(0, groundtruthInHz.size)]
-    elif estimateInHz.size > groundtruthInHz.size:
-        groundtruthInHz = groundtruthInHz[np.arange(0, estimateInHz.size)]
+    if annotation.size > annotation.size:
+        estimateInHz = estimation[np.arange(0, annotation.size)]
+    elif estimation.size > annotation.size:
+        annotationInHz = annotation[np.arange(0, estimation.size)]
 
-    diffInCent = 100 * (convert_freq2midi(estimateInHz) - convert_freq2midi(groundtruthInHz))
+    diffInCent = 100 * (convert_freq2midi(estimateInHz) - convert_freq2midi(annotationInHz))
 
-    rms = np.sqrt(np.mean(diffInCent[groundtruthInHz != 0] ** 2))
+    errCentRms = np.sqrt(np.mean(diffInCent ** 2))
+
+    eval_voiced_fn(estimateInHz,annotationInHz)
+
+    eval_voiced_fp(estimateInHz,annotationInHz)
 
     return (errCentRms, pfp, pfn)
+
+#read audio files
+def audio_read(path):
+    samplerate, x = read(path)
+    if x.dtype == 'float32':
+        audio = x
+    else:
+        # change range to [-1,1)
+        if x.dtype == 'uint8':
+            nbits = 8
+        elif x.dtype == 'int16':
+            nbits = 16
+        elif x.dtype == 'int32':
+            nbits = 32
+
+        audio = x / float(2**(nbits - 1))
+
+    # special case of unsigned format
+    if x.dtype == 'uint8':
+        audio = audio - 1.
+
+    if audio.ndim > 1:
+        audio = audio[:, 0]
+
+    return samplerate, audio
+
+#read labels from annotation files
+def read_label(path, estimateTime):
+
+        es_idx = 0
+        pre = -1
+
+        oup = []
+        time = []
+        f = open(path, "r")
+        for x in f:
+            time = float(x.split('     ')[0])
+            if es_idx < len(estimateTime):
+                while es_idx < len(estimateTime) and estimateTime[es_idx] < time and estimateTime[es_idx] > pre:
+                    oup.append(x.split('     ')[2])
+                    pre = estimateTime[es_idx]
+                    es_idx+=1
+        return oup
 
 #E. Evaluation
 
