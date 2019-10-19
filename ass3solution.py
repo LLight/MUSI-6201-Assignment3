@@ -162,29 +162,39 @@ def apply_voicing_mask(f0, mask):
 #D1. eval_voiced_fp computes the percentage of false positives for the fundamental frequency estimation
 
 def eval_voiced_fp(estimation, annotation):
-    #denominator = num blocks with annotation = 0
-    denom=sum(f.estimation==0 for f in estimation)
-    #numerator = num blocks in the denominator with fundamental freq not equal to 0
-    num=sum(f.annotation!=0 for f in annotation)
-    pfp=num/denom
+    # denominator = num blocks with annotation = 0
+    denom = (annotation == 0).sum()
+    n = len(annotation)
+    # create a vector to define which blocks in the denominator are also in the numerator (value=1 if it is in the numerator)
+    numvector = np.zeros(n)
+    for i in range(0, n - 1):
+        if (annotation[i] == 0) & (estimation[i] != 0):
+            numvector[i] = 1
+    # numerator = num blocks in the denominator with fundamental freq not equal to 0
+    num = (numvector == 1).sum()
+    pfp = num / denom
     return pfp
+
 
 #D2. eval_voiced_fn computes the percentage of false negatives
 def eval_voiced_fn(estimation, annotation):
-    #denominator = num blocks with non-zero fundamental frequency in the annotation.
-    denom=sum(f.estimation !=0 for f in estimation)
-    #numerator = num blocks in denominator that were detected as zero
-    num=sum(f.annotation == 0  for f in annotation)
-    pfn=num/denom
+    # denominator = num blocks with non-zero fundamental frequency in the annotation.
+    denom = (annotation != 0).sum()
+    n = len(annotation)
+    # create a vector to define which blocks in the denominator are also in the numerator (value=1 if in the numerator)
+    numvector = np.zeros(n)
+    for i in range(0, n - 1):
+        if (annotation[i] != 0) & (estimation[i] == 0):
+            numvector[i] = 1
+    # numerator = num blocks in denominator that were detected as zero
+    num = (numvector == 1).sum()
+    pfn = num / denom
     return pfn
 
 #D3. Modified version of eval_pitchtrack from Assignment 1
 #input: estimation, annotation
 #output: errCentRms, pfp, pfn
 def eval_pitchtrack_v2(estimation, annotation):
-######## Need to modify the eval_pitchtrack function from assignment 1 (copied below).
-######## Update errCentRMS to take into account zeros in estimation, change variable names, incorporate pfp and pfn
-
     # truncate longer vector
     if annotation.size > annotation.size:
         estimateInHz = estimation[np.arange(0, annotation.size)]
