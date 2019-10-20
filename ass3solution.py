@@ -9,7 +9,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import read
-from scipy.signal import spectrogram
+from scipy.signal import spectrogram, medfilt
 
 #Block audio function
 def block_audio(x,blockSize,hopSize,fs):
@@ -40,27 +40,19 @@ def compute_hann(iWindowLength):
 # inputs: xb=block, fs=sample rate
 # outputs: X = magnitude spectrogram (dimensions blockSize/2+1 X numBlocks), fInHz = central frequency of each bin (dim blockSize/2+1,)
 def compute_spectrogram(xb, fs):
-
-    # (NumOfBlocks, blockSize) = xb.shape
-    FFT_point = blockSize = 1024
-    hann = compute_hann(blockSize)
-    # print(hann.shape)
-
-    # X = []
-    # fInHz = []
-    # for b in xb:
-    #     f, t, Sxx = spectrogram(xb, fs, window=hann, nfft=FFT_point)
-    #     print(f.shape)
-    #     print(Sxx.shape)
-    #     X.append(Sxx)
-    #     fInHz.append(f)
-
-    fInHz, t, X = spectrogram(xb, fs, window=hann, nfft=FFT_point)
-    plt.pcolormesh(t, fInHz, X)
-    plt.ylabel('Frequency [Hz]')
-    plt.xlabel('Time [sec]')
-    plt.show()
+    (NumOfBlocks, blockSize) = xb.shape
+    hann=compute_hann(iWindowLength=blockSize)
+    fInHz, t, X = spectrogram(xb, fs, window=hann, nfft=blockSize)
+##need to move the plt and print statements to main section at the end
+    #plt.pcolormesh(t, fInHz, X)
+    #plt.ylabel('Frequency [Hz]')
+    #plt.xlabel('Time [sec]')
+    #plt.show()
     X = np.array(X)
+
+    X = np.squeeze(X, axis=2)
+    X = np.transpose(X)
+
     fInHz = np.array(fInHz)
     print(X.shape)
     print(fInHz.shape)
@@ -160,12 +152,33 @@ def apply_voicing_mask(f0, mask):
 
 if __name__ == "__main__":
     fs, audio = read('C:/Users/bhxxl/OneDrive/GT/Computational Music Analysis/HW1/developmentSet/trainData/01-D_AMairena.wav')
-    blockSize = 1024
-    hopSize = 256
+    txt_file = 'C:/Users/bhxxl/OneDrive/GT/Computational Music Analysis/HW1/developmentSet/trainData/01-D_AMairena.f0.Corrected.txt'
+    with open(txt_file) as f:
+        annotations = f.readlines()
+    for i in range(len(annotations)):
+        annotations[i] = list(map(float, annotations[i][:-2].split('     ')))
+    annotations = np.array(annotations)
+
+    blockSize = 2048
+    hopSize = 512
     xb, t = block_audio(audio,blockSize,hopSize,fs)
-    # X, fInHz = compute_spectrogram(audio, fs)
-    # order = 4
-    # f0 = get_f0_from_Hps(X, fs, order)
+    X, fInHz = compute_spectrogram(xb, fs)
+    order = 4
+    f0 = get_f0_from_Hps(X, fs, order)
+
+    trimmed_f0 = np.ones(f0.shape)
+    trimmed_annotations = np.ones(f0.shape)
+    print(f0.shape)
+    for i in range(len(f0)):
+        if annotations[i, 2] > 0:
+            trimmed_f0[i] = f0[i]
+            trimmed_annotations[i] = annotations[i, 2]
+    plt.plot(trimmed_f0)
+    plt.plot(trimmed_annotations)
+    plt.legend(['f0','annotation'])
+    plt.show()
+
     rmsDb = extract_rms(xb)
     thresholdDb = -20
     mask = create_voicing_mask(rmsDb, thresholdDb)
+    f0Adj = apply_voicing_mask(f0, mask)
