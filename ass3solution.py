@@ -9,7 +9,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import read
-from scipy.signal import spectrogram
+from scipy.signal import spectrogram, medfilt
 
 #Block audio function
 def block_audio(x,blockSize,hopSize,fs):
@@ -41,17 +41,17 @@ def compute_hann(iWindowLength):
 # outputs: X = magnitude spectrogram (dimensions blockSize/2+1 X numBlocks), fInHz = central frequency of each bin (dim blockSize/2+1)
 def compute_spectrogram(xb, fs):
     (NumOfBlocks, blockSize) = xb.shape
-    hann = compute_hann(iWindowLength=blockSize)
-    fInHz, t, X = spectrogram(xb, fs, window=hann, nfft=blockSize)
-    ##need to move the plt and print statements to main section at the end
-    # plt.pcolormesh(t, fInHz, X)
-    # plt.ylabel('Frequency [Hz]')
-    # plt.xlabel('Time [sec]')
-    # plt.show()
+    FFT_point = blockSize
+    hann = compute_hann(blockSize)
+
+    fInHz, t, X = spectrogram(xb, fs, window=hann, nfft=FFT_point)
+
     X = np.array(X)
+    X = np.squeeze(X, axis=2)
+    X = np.transpose(X)
+
     fInHz = np.array(fInHz)
-   # print(X.shape)
-   # print(fInHz.shape)
+
     return (X, fInHz)
 
 
@@ -65,7 +65,7 @@ def track_pitch_fftmax(x, blockSize, hopSize, fs):
     nBlocks = len(timeInSec)
     f0 = np.zeros(nBlocks)
     for block in range(0, nBlocks - 1):
-        i = np.argmax(X[block, :, 0])
+        i = np.argmax(X[:, block])
         f0[block] = fInHz[i]
     return (f0, timeInSec)
 
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     ax.legend()
     plt.show()
     
-     fs, audio = read('C:/Users/bhxxl/OneDrive/GT/Computational Music Analysis/HW1/developmentSet/trainData/01-D_AMairena.wav')
+    fs, audio = read('C:/Users/bhxxl/OneDrive/GT/Computational Music Analysis/HW1/developmentSet/trainData/01-D_AMairena.wav')
     blockSize = 1024
     hopSize = 256
     xb, t = block_audio(audio,blockSize,hopSize,fs)
