@@ -10,6 +10,8 @@ import math
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import read
 from scipy.signal import spectrogram, medfilt
+import os
+from scipy.io.wavfile import read as wavread
 
 #Block audio function
 def block_audio(x,blockSize,hopSize,fs):
@@ -255,88 +257,359 @@ def read_label(path, estimateTime):
         return oup
 
 #E. Evaluation
+def make_sin(fs, freq, seconds):
+    time_in_sec = np.arange(fs*seconds)/fs
+    radians = time_in_sec * freq * 2 * np.pi
+    sin = np.sin(radians)
+    return sin
+
+
+def ToolReadAudio(cAudioFilePath):
+    [samplerate, x] = wavread(cAudioFilePath)
+
+    if x.dtype == 'float32':
+        audio = x
+    else:
+        # change range to [-1,1)
+        if x.dtype == 'uint8':
+            nbits = 8
+        elif x.dtype == 'int16':
+            nbits = 16
+        elif x.dtype == 'int32':
+            nbits = 32
+
+        audio = x / float(2**(nbits - 1))
+
+    # special case of unsigned format
+    if x.dtype == 'uint8':
+        audio = audio - 1.
+
+    return (samplerate, audio)
+
+
+
+def convert_freq2midi(fInHz, fA4InHz=440):
+    def convert_freq2midi_scalar(f, fA4InHz):
+
+        if f <= 0:
+            return 0
+        else:
+            return (69 + 12 * np.log2(f / fA4InHz))
+        fInHz = np.asarray(fInHz)
+        if fInHz.ndim == 0:
+            return convert_freq2midi_scalar(fInHz, fA4InHz)
+
+    fInHz = np.asarray(fInHz)
+    if fInHz.ndim == 0:
+        return convert_freq2midi_scalar(fInHz, fA4InHz)
+
+    midi = np.zeros(fInHz.shape)
+    for k, f in enumerate(fInHz):
+        midi[k] = convert_freq2midi_scalar(f, fA4InHz)
+
+    return (midi)
+
+
+def eval_pitchtrack(estimateInHz, groundtruthInHz):
+    if np.abs(groundtruthInHz).sum() <= 0:
+        return 0
+
+    # truncate longer vector
+    if groundtruthInHz.size > estimateInHz.size:
+        estimateInHz = estimateInHz[np.arange(0, groundtruthInHz.size)]
+    elif estimateInHz.size > groundtruthInHz.size:
+        groundtruthInHz = groundtruthInHz[np.arange(0, estimateInHz.size)]
+
+    diffInCent = 100 * (convert_freq2midi(estimateInHz) - convert_freq2midi(groundtruthInHz))
+
+    rms = np.sqrt(np.mean(diffInCent[groundtruthInHz != 0] ** 2))
+    return (rms)
+
+
+def run_evaluation1(complete_path_to_data_folder):
+
+
+    # init
+    rmsAvg_1 = 0
+    rmsAvg_2 = 0
+    iNumOfFiles = 0
+
+    # for loop over files
+    for file in os.listdir(complete_path_to_data_folder):
+        if file.endswith(".wav"):
+            iNumOfFiles += 1
+            # read audio
+            [fs, afAudioData] = ToolReadAudio(complete_path_to_data_folder + file)
+
+            # read ground truth (assume the file is there!)
+            refdata = np.loadtxt(complete_path_to_data_folder + os.path.splitext(file)[0] + '.f0.Corrected.txt')
+        else:
+            continue
+
+        # extract pitch
+        [f0, t] = track_pitch_fftmax(afAudioData, 1024, 512, fs)
+        [f0_2, t] = track_pitch_hps(afAudioData, 1024, 512, fs)
+        [f0_3, t] = track_pitch(afAudioData, 1024, 512, fs)
+        # compute rms and accumulate
+        rmsAvg_1 += eval_pitchtrack_v2(f0, refdata[:, 2])
+        rmsAvg_2 += eval_pitchtrack_v2(f0_2, refdata[:, 2])
+        rmsAvg = np.concatenate([rmsAvg_1, rmsAvg_2])
+
+    if iNumOfFiles == 0:
+        return -1
+
+    return rmsAvg / iNumOfFiles
+
+
+# Question E5
+def track_pitch(x, blockSize, hopSize, fs, method, voicingThres):
+    if method == 'acf':
+        f0, timeInSec = track_pitch_acf(x,blockSize, hopSize, fs)
+    elif method == 'hps':
+        f0, timeInSec = track_pitch_hps(x,blockSize, hopSize, fs)
+    elif method == 'max':
+        f0, timeInSec = track_pitch_fftmax(x,blockSize, hopSize, fs)
+
+    rmsDb = extract_rms(x)
+    mask = create_voicing_mask(rmsDb, voicingThres)
+    f0Adj = apply_voicing_mask(f0, mask)
+
+    return f0Adj, timeInSec
+
+
+# Question E6
+
+# track acf function from assign 1
+def comp_acf(inputVector, bIsNormalized=True):
+    if bIsNormalized:
+        norm = np.dot(inputVector, inputVector)
+    else:
+        norm = 1
+
+    afCorr = np.correlate(inputVector, inputVector, "full") / norm
+    afCorr = afCorr[np.arange(inputVector.size - 1, afCorr.size)]
+
+    return (afCorr)
+
+
+def get_f0_from_acf(r, fs):
+    eta_min = 1
+    afDeltaCorr = np.diff(r)
+    eta_tmp = np.argmax(afDeltaCorr > 0)
+    eta_min = np.max([eta_min, eta_tmp])
+
+    f = np.argmax(r[np.arange(eta_min + 1, r.size)])
+    f = fs / (f + eta_min + 1)
+
+    return (f)
+
+
+def track_pitch_acf(x, blockSize, hopSize, fs):
+    # get blocks
+    [xb, t] = block_audio(x, blockSize, hopSize, fs)
+
+    # init result
+    f0 = np.zeros(xb.shape[0]
+                  )
+    # compute acf
+    for n in range(0, xb.shape[0]):
+        r = comp_acf(xb[n, :])
+        f0[n] = get_f0_from_acf(r, fs)
+
+    return (f0, t)
+
+
+
+
+def run_evaluation2(complete_path_to_data_folder):
+
+    # init
+    rmsAvg_1 = 0
+    rmsAvg_2 = 0
+    rmsAvg_3 = 0
+    rmsAvg_4 = 0
+    rmsAvg_5 = 0
+    rmsAvg_6 = 0
+    iNumOfFiles = 0
+
+    # for loop over files
+    for file in os.listdir(complete_path_to_data_folder):
+        if file.endswith(".wav"):
+            iNumOfFiles += 1
+            # read audio
+            [fs, afAudioData] = ToolReadAudio(complete_path_to_data_folder + file)
+
+            # read ground truth (assume the file is there!)
+            refdata = np.loadtxt(complete_path_to_data_folder + os.path.splitext(file)[0] + '.f0.Corrected.txt')
+        else:
+            continue
+
+        # extract pitch
+        [f0_1, t] = track_pitch(afAudioData, 1024, 512, fs, 'acf', -40)
+        [f0_2, t] = track_pitch(afAudioData, 1024, 512, fs, 'hps', -40)
+        [f0_3, t] = track_pitch(afAudioData, 1024, 512, fs, 'max', -40)
+        [f0_4, t] = track_pitch(afAudioData, 1024, 512, fs, 'acf', -20)
+        [f0_5, t] = track_pitch(afAudioData, 1024, 512, fs, 'hps', -20)
+        [f0_6, t] = track_pitch(afAudioData, 1024, 512, fs, 'max', -20)
+        # compute rms and accumulate
+        rmsAvg_1 += eval_pitchtrack_v2(f0_1, refdata[:, 2])
+        rmsAvg_2 += eval_pitchtrack_v2(f0_2, refdata[:, 2])
+        rmsAvg_3 += eval_pitchtrack_v2(f0_3, refdata[:, 2])
+        rmsAvg_4 += eval_pitchtrack_v2(f0_4, refdata[:, 2])
+        rmsAvg_5 += eval_pitchtrack_v2(f0_5, refdata[:, 2])
+        rmsAvg_6 += eval_pitchtrack_v2(f0_6, refdata[:, 2])
+
+        rmsAvg = np.concatenate([rmsAvg_1, rmsAvg_2, rmsAvg_3, rmsAvg_4, rmsAvg_5, rmsAvg_6])
+
+    if iNumOfFiles == 0:
+        return -1
+
+    return rmsAvg / iNumOfFiles
+
+
+def executeassign3():
+
+    # Question E.1
+
+    fs = 44100
+    sin441 = make_sin(fs, 441, 1)
+    sin882 = make_sin(fs, 882, 1)
+    blockSize = 1024
+    hopSize = 512
+
+    sin = np.concatenate([sin441, sin882])
+    xb, t = block_audio(sin, blockSize, hopSize, fs)
+
+    f0, timeInSec = track_pitch_fftmax(xb, blockSize, hopSize, fs)
+    plt.figure(1)
+    plt.subplot(1, 2, 1)
+    plt.plot(f0, timeInSec)
+    plt.xlabel('Time (s)')
+    plt.ylabel('F0 (Hz)')
+
+    error441 = np.abs(f0[:len(f0)//2]-441*np.ones(len(f0//2)))
+    error882 = np.abs(f0[len(f0)//2:]-882*np.ones(len(f0//2)))
+    error = np.concatenate([error441, error882])
+
+    plt.subplot(1, 2, 2)
+    plt.plot(error, timeInSec)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Error (Hz)')
+
+    track_pitch_hps(xb, blockSize, hopSize, fs)
+    plt.figure(2)
+    plt.plot(track_pitch_hps[0], track_pitch_hps[1])
+
+    # Question E.2
+
+    blockSize_2 = 2048
+    hopSize_2 = 512
+    xb_2, t_2 = block_audio(sin, blockSize_2, hopSize_2, fs)
+    f0_2, timeInSec_2 = track_pitch_fftmax(xb_2, blockSize_2, hopSize_2, fs)
+    plt.subplot(1, 2, 1)
+    plt.plot(f0_2, timeInSec_2)
+    plt.xlabel('Time (s)')
+    plt.ylabel('F0_2 (Hz)')
+
+    error441_2 = np.abs(f0[:len(f0_2) // 2] - 441 * np.ones(len(f0_2 // 2)))
+    error882_2 = np.abs(f0[len(f0_2) // 2:] - 882 * np.ones(len(f0_2 // 2)))
+    error_2 = np.concatenate([error441_2, error882_2])
+
+    plt.subplot(1, 2, 2)
+    plt.plot(error_2, timeInSec_2)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Error (Hz)')
+
+    # Question E3,4,5,6
+    #insert file path
+    run_evaluation1()
+    run_evaluation2()
+    return ()
+
+
+
 
 #E1. generate a test signal (sine wave, f = 441 Hz from 0-1 sec and f = 882 Hz from 1-2 sec),
 
-fs = 44100
-timeA = np.linspace(start=0, stop=1, num=fs, endpoint=False)
-timeB = np.linspace(start=1, stop=2, num=fs, endpoint=False)
-
-# generate test signals at 441 Hz from 0 to 1 sec and 882 Hz from 1 to 2 sec
-testsignalA = np.sin(2 * np.pi * 441 * timeA)
-testsignalB = np.sin(2 * np.pi * 882 * timeB)
-
-# append arrays to create a 2 sec test signal
-testSignal = np.append(testsignalA, testsignalB)
-
-# apply track_pitch_fftmax() to test signal (blockSize = 1024, hopSize = 512)
-(f0TestMaxPeak,timeTestMaxPeak)=track_pitch_fftmax(x=testSignal,blockSize=1024,hopSize=512,fs=44100)
-
-# apply track_pitch_hps() to the test signal with the same signal and parameters.
-(f0TestHps,timeTestHps)=track_pitch_hps(x=testSignal,blockSize=1024,hopSize=512,fs=44100)
-
-#calculate absolute error per block for the test signals
-def errtest(f0):
-    err=np.zeros(len(f0))
-    for i in range(len(f0)):
-        if 0 <= timeInSec[i] < 1:
-            err[i] = abs(f0[i] - 441)
-        elif timeInSec[i] >= 1:
-            err[i] = abs(f0[i] - 882)
-        np.append(err[i],err_nonzero)
-    return err
-
-errTestMaxPeak=errtest(f0=f0TestMaxPeak)
-errTestHps=errtest(f0=f0testHps)
-
-#E2. Repeat E1 using blockSize = 2048, hopSize = 512, only for the max spectra method.
-
-(f0TestMaxPeak2,timeTestMaxPeak2)=track_pitch_fftmax(x=testSignal,blockSize=2048,hopSize=512,fs=44100)
-
-errTestMaxPeak2=errtest(f0=f0TestMaxPeak)
-
-#E3 (TBD). Evaluate track_pitch_fftmax() using the training set and the eval_pitchtrack_v2() method, calculate avg metrics over training set
-#E4 (TBD). Evaluate track_pitch_hps() using the training set and the eval_pitchtrack_v2() method, calculate avg metrics over training set
-
-#E5. Compute the fundamental frequency and apply the voicing mask based on the threshold parameter.
-# input: x=audio signal, blockSize, hopSize, fs=sample rate, method='acf','max', or 'hps', voicingThres=threshold parameter
-# output: f0Adj = vector of fundamental frequencies, timeInSec=time vector
-def track_pitch(x, blockSize, hopSize, fs, method, voicingThres):
-    return (f0Adj, timeInSec)
-
-#E6 (TBD). Evaluate track_pitch() using the training set and the eval_pitchtrack_v2() method (use blockSize = 1024, hopSize = 512)
-# over all 3 pitch trackers (acf, max and hps) with two values of threshold (threshold = -40, -20)
-
-
-if __name__ == "__main__":
-    #E1-E2: Plot the f0 curve and and absolute error per block for the sine wave test signals for FFT max and HPS method
-
-    fig1 = plt.figure()
-    ax = fig1.add_subplot(1, 1, 1)
-    ax.title("Estimated Fundamental Frequency for Sine Wave Test Signal")
-    ax.plot(timeTestMaxPeak, f0TestMaxPeak, color='tab:blue', label='Max Peak (block size=1024)')
-    ax.plot(timeTestHps, f0TestHps, color='tab:orange', label='HPS (block size=1024)')
-    ax.plot(timeTestMaxPeak2, f0MaxPeak2, color='tab:purple', label='Max Peak (blockSize=2048)')
-    ax.legend()
-    plt.show()
-
-    fig2 = plt.figure()
-    ax = fig1.add_subplot(1, 1, 1)
-    ax.title("Absolute Error in Fundamental Frequency for Sine Wave Test Signal")
-    ax.plot(timeTestMaxPeak, errTestMaxPeak, color='tab:blue', label='Max Peak (block size=1024)')
-    ax.plot(timeTestHps, errTestHps, color='tab:orange', label='HPS (block size=1024)')
-    ax.plot(timeTestMaxPeak2, errMaxPeak2, color='tab:purple', label='Max Peak (blockSize=2048)')
-    ax.legend()
-    plt.show()
-    
-    fs, audio = read('C:/Users/bhxxl/OneDrive/GT/Computational Music Analysis/HW1/developmentSet/trainData/01-D_AMairena.wav')
-    blockSize = 1024
-    hopSize = 256
-    xb, t = block_audio(audio,blockSize,hopSize,fs)
-    # X, fInHz = compute_spectrogram(audio, fs)
-    # order = 4
-    # f0 = get_f0_from_Hps(X, fs, order)
-    rmsDb = extract_rms(xb)
-    thresholdDb = -20
-    mask = create_voicing_mask(rmsDb, thresholdDb)
-
+# fs = 44100
+# timeA = np.linspace(start=0, stop=1, num=fs, endpoint=False)
+# timeB = np.linspace(start=1, stop=2, num=fs, endpoint=False)
+#
+# # generate test signals at 441 Hz from 0 to 1 sec and 882 Hz from 1 to 2 sec
+# testsignalA = np.sin(2 * np.pi * 441 * timeA)
+# testsignalB = np.sin(2 * np.pi * 882 * timeB)
+#
+# # append arrays to create a 2 sec test signal
+# testSignal = np.append(testsignalA, testsignalB)
+#
+# # apply track_pitch_fftmax() to test signal (blockSize = 1024, hopSize = 512)
+# (f0TestMaxPeak,timeTestMaxPeak)=track_pitch_fftmax(x=testSignal,blockSize=1024,hopSize=512,fs=44100)
+#
+# # apply track_pitch_hps() to the test signal with the same signal and parameters.
+# (f0TestHps,timeTestHps)=track_pitch_hps(x=testSignal,blockSize=1024,hopSize=512,fs=44100)
+#
+# #calculate absolute error per block for the test signals
+# def errtest(f0):
+#     err=np.zeros(len(f0))
+#     for i in range(len(f0)):
+#         if 0 <= timeInSec[i] < 1:
+#             err[i] = abs(f0[i] - 441)
+#         elif timeInSec[i] >= 1:
+#             err[i] = abs(f0[i] - 882)
+#         np.append(err[i],err_nonzero)
+#     return err
+#
+# errTestMaxPeak=errtest(f0=f0TestMaxPeak)
+# errTestHps=errtest(f0=f0testHps)
+#
+# #E2. Repeat E1 using blockSize = 2048, hopSize = 512, only for the max spectra method.
+#
+# (f0TestMaxPeak2,timeTestMaxPeak2)=track_pitch_fftmax(x=testSignal,blockSize=2048,hopSize=512,fs=44100)
+#
+# errTestMaxPeak2=errtest(f0=f0TestMaxPeak)
+#
+# #E3 (TBD). Evaluate track_pitch_fftmax() using the training set and the eval_pitchtrack_v2() method, calculate avg metrics over training set
+# #E4 (TBD). Evaluate track_pitch_hps() using the training set and the eval_pitchtrack_v2() method, calculate avg metrics over training set
+#
+# #E5. Compute the fundamental frequency and apply the voicing mask based on the threshold parameter.
+# # input: x=audio signal, blockSize, hopSize, fs=sample rate, method='acf','max', or 'hps', voicingThres=threshold parameter
+# # output: f0Adj = vector of fundamental frequencies, timeInSec=time vector
+# def track_pitch(x, blockSize, hopSize, fs, method, voicingThres):
+#     return (f0Adj, timeInSec)
+#
+# #E6 (TBD). Evaluate track_pitch() using the training set and the eval_pitchtrack_v2() method (use blockSize = 1024, hopSize = 512)
+# # over all 3 pitch trackers (acf, max and hps) with two values of threshold (threshold = -40, -20)
+#
+#
+# if __name__ == "__main__":
+#     #E1-E2: Plot the f0 curve and and absolute error per block for the sine wave test signals for FFT max and HPS method
+#
+#     fig1 = plt.figure()
+#     ax = fig1.add_subplot(1, 1, 1)
+#     ax.title("Estimated Fundamental Frequency for Sine Wave Test Signal")
+#     ax.plot(timeTestMaxPeak, f0TestMaxPeak, color='tab:blue', label='Max Peak (block size=1024)')
+#     ax.plot(timeTestHps, f0TestHps, color='tab:orange', label='HPS (block size=1024)')
+#     ax.plot(timeTestMaxPeak2, f0MaxPeak2, color='tab:purple', label='Max Peak (blockSize=2048)')
+#     ax.legend()
+#     plt.show()
+#
+#     fig2 = plt.figure()
+#     ax = fig1.add_subplot(1, 1, 1)
+#     ax.title("Absolute Error in Fundamental Frequency for Sine Wave Test Signal")
+#     ax.plot(timeTestMaxPeak, errTestMaxPeak, color='tab:blue', label='Max Peak (block size=1024)')
+#     ax.plot(timeTestHps, errTestHps, color='tab:orange', label='HPS (block size=1024)')
+#     ax.plot(timeTestMaxPeak2, errMaxPeak2, color='tab:purple', label='Max Peak (blockSize=2048)')
+#     ax.legend()
+#     plt.show()
+#
+#     fs, audio = read('C:/Users/bhxxl/OneDrive/GT/Computational Music Analysis/HW1/developmentSet/trainData/01-D_AMairena.wav')
+#     blockSize = 1024
+#     hopSize = 256
+#     xb, t = block_audio(audio,blockSize,hopSize,fs)
+#     # X, fInHz = compute_spectrogram(audio, fs)
+#     # order = 4
+#     # f0 = get_f0_from_Hps(X, fs, order)
+#     rmsDb = extract_rms(xb)
+#     thresholdDb = -20
+#     mask = create_voicing_mask(rmsDb, thresholdDb)
+#
