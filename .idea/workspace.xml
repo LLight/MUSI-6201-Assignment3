@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="7b2707c6-33d7-45e1-bf74-509647a1eb85" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ass3solution.py" beforeDir="false" afterPath="$PROJECT_DIR$/ass3solution.py" afterDir="false" />
-    </list>
+    <list default="true" id="7b2707c6-33d7-45e1-bf74-509647a1eb85" name="Default" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -17,8 +14,8 @@
       <file leaf-file-name="hw3_E.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/hw3_E.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="486">
-              <caret line="230" column="31" lean-forward="true" selection-start-line="7" selection-end-line="230" selection-end-column="31" />
+            <state relative-caret-position="3390">
+              <caret line="230" column="31" selection-start-line="7" selection-end-line="230" selection-end-column="31" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -29,8 +26,8 @@
       <file leaf-file-name="ass3solution.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/ass3solution.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="240">
-              <caret line="16" column="40" lean-forward="true" selection-start-line="16" selection-start-column="40" selection-end-line="16" selection-end-column="40" />
+            <state relative-caret-position="381">
+              <caret line="360" lean-forward="true" selection-start-line="360" selection-end-line="360" />
               <folding>
                 <element signature="e#267#285#0" expanded="true" />
               </folding>
@@ -73,8 +70,7 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="229" />
+  <component name="ProjectFrameBounds">
     <option name="y" value="23" />
     <option name="width" value="1280" />
     <option name="height" value="732" />
@@ -184,20 +180,40 @@
       <window_info anchor="bottom" id="TODO" order="10" />
       <window_info anchor="bottom" id="Version Control" order="3" />
       <window_info anchor="bottom" id="Run" order="6" weight="0.32905295" />
-      <window_info anchor="bottom" id="Find" order="5" />
+      <window_info anchor="bottom" id="Python Console" order="0" weight="0.18066561" />
+      <window_info anchor="bottom" id="Message" order="4" />
       <window_info anchor="bottom" id="Debug" order="7" weight="0.4" />
       <window_info anchor="bottom" id="Terminal" order="1" visible="true" weight="0.32913387" />
       <window_info anchor="bottom" id="Event Log" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Cvs" order="8" weight="0.25" />
+      <window_info anchor="bottom" id="Find" order="5" />
       <window_info id="Favorites" order="0" side_tool="true" />
-      <window_info anchor="bottom" id="Message" order="4" />
-      <window_info anchor="bottom" id="Python Console" order="0" weight="0.18066561" />
     </layout-to-restore>
   </component>
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/hw3_E.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3390">
+          <caret line="230" column="31" selection-start-line="7" selection-end-line="230" selection-end-column="31" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ass3solution.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="150">
+          <caret line="16" column="40" lean-forward="true" selection-start-line="16" selection-start-column="40" selection-end-line="16" selection-end-column="40" />
+          <folding>
+            <element signature="e#267#285#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/hw3_E.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="375">
@@ -220,8 +236,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/hw3_E.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="486">
-          <caret line="230" column="31" lean-forward="true" selection-start-line="7" selection-end-line="230" selection-end-column="31" />
+        <state relative-caret-position="3390">
+          <caret line="230" column="31" selection-start-line="7" selection-end-line="230" selection-end-column="31" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
@@ -230,8 +246,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/ass3solution.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="240">
-          <caret line="16" column="40" lean-forward="true" selection-start-line="16" selection-start-column="40" selection-end-line="16" selection-end-column="40" />
+        <state relative-caret-position="381">
+          <caret line="360" lean-forward="true" selection-start-line="360" selection-end-line="360" />
           <folding>
             <element signature="e#267#285#0" expanded="true" />
           </folding>

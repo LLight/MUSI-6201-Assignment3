@@ -330,8 +330,8 @@ def run_evaluation1(complete_path_to_data_folder):
 
 
     # init
-    rmsAvg_1 = 0
-    rmsAvg_2 = 0
+    eval_1 = np.zeros(3)
+    eval_2 = np.zeros(3)
     iNumOfFiles = 0
 
     # for loop over files
@@ -351,16 +351,17 @@ def run_evaluation1(complete_path_to_data_folder):
         [f0_2, t] = track_pitch_hps(afAudioData, 1024, 512, fs)
         # compute rms and accumulate
 
-        rmsAvg_1 += eval_pitchtrack_v2(f0, refdata[:, 2])
-        rmsAvg_2 += eval_pitchtrack_v2(f0_2, refdata[:, 2])
-        rmsAvg = np.concatenate([rmsAvg_1, rmsAvg_2])
+        eval_1 += eval_pitchtrack_v2(f0, refdata[:, 2])
+        eval_2 += eval_pitchtrack_v2(f0_2, refdata[:, 2])
 
 
 
     if iNumOfFiles == 0:
         return -1
 
-    return rmsAvg / iNumOfFiles
+    print("evaluation 1 is ", eval_1 / iNumOfFiles)
+    print("evaluation 2 is ", eval_2 / iNumOfFiles)
+    #return eval_1 / iNumOfFiles, eval_2 / iNumOfFiles
 
 
 # Question E5
@@ -426,12 +427,12 @@ def track_pitch_acf(x, blockSize, hopSize, fs):
 def run_evaluation2(complete_path_to_data_folder):
 
     # init
-    rmsAvg_1 = 0
-    rmsAvg_2 = 0
-    rmsAvg_3 = 0
-    rmsAvg_4 = 0
-    rmsAvg_5 = 0
-    rmsAvg_6 = 0
+    eval_1 = np.zeros(3)
+    eval_2 = np.zeros(3)
+    eval_3 = np.zeros(3)
+    eval_4 = np.zeros(3)
+    eval_5 = np.zeros(3)
+    eval_6 = np.zeros(3)
     iNumOfFiles = 0
 
     # for loop over files
@@ -454,19 +455,25 @@ def run_evaluation2(complete_path_to_data_folder):
         [f0_5, t] = track_pitch(afAudioData, 1024, 512, fs, 'hps', -20)
         [f0_6, t] = track_pitch(afAudioData, 1024, 512, fs, 'max', -20)
         # compute rms and accumulate
-        rmsAvg_1 += eval_pitchtrack_v2(f0_1, refdata[:, 2])
-        rmsAvg_2 += eval_pitchtrack_v2(f0_2, refdata[:, 2])
-        rmsAvg_3 += eval_pitchtrack_v2(f0_3, refdata[:, 2])
-        rmsAvg_4 += eval_pitchtrack_v2(f0_4, refdata[:, 2])
-        rmsAvg_5 += eval_pitchtrack_v2(f0_5, refdata[:, 2])
-        rmsAvg_6 += eval_pitchtrack_v2(f0_6, refdata[:, 2])
+        eval_1 += eval_pitchtrack_v2(f0_1, refdata[:, 2])
+        eval_2 += eval_pitchtrack_v2(f0_2, refdata[:, 2])
+        eval_3 += eval_pitchtrack_v2(f0_3, refdata[:, 2])
+        eval_4 += eval_pitchtrack_v2(f0_4, refdata[:, 2])
+        eval_5 += eval_pitchtrack_v2(f0_5, refdata[:, 2])
+        eval_6 += eval_pitchtrack_v2(f0_6, refdata[:, 2])
 
-        rmsAvg = np.concatenate([rmsAvg_1, rmsAvg_2, rmsAvg_3, rmsAvg_4, rmsAvg_5, rmsAvg_6])
 
     if iNumOfFiles == 0:
         return -1
 
-    return rmsAvg / iNumOfFiles
+    print("evaluation 1 is ", eval_1 / iNumOfFiles)
+    print("evaluation 2 is ", eval_2 / iNumOfFiles)
+    print("evaluation 3 is ", eval_3 / iNumOfFiles)
+    print("evaluation 4 is ", eval_4 / iNumOfFiles)
+    print("evaluation 5 is ", eval_5 / iNumOfFiles)
+    print("evaluation 6 is ", eval_6 / iNumOfFiles)
+
+   # return eval_1 / iNumOfFiles, eval_2 / iNumOfFiles, eval_3 / iNumOfFiles, eval_4 / iNumOfFiles, eval_5 / iNumOfFiles, eval_6 / iNumOfFiles
 
 
 def errtest(f0,timeInSec):
