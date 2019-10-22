@@ -86,7 +86,6 @@ def get_f0_from_Hps(X, fs, order):
     # block wise HPS
     for i in range(0,X.shape[1]):
         X1 = X[:,i]
-        # print(X1.shape)
         X_hps = np.ones(X1.shape[0])
         for k in range(0,X_hps.shape[0]):
             for j in range(1,order+1):
@@ -97,7 +96,6 @@ def get_f0_from_Hps(X, fs, order):
         freq = freq_bin * fs / FFT_point
         f0.append(freq)
     f0 = np.array(f0)
-    print(f0.shape)
     
     return f0
 
@@ -373,7 +371,8 @@ def track_pitch(x, blockSize, hopSize, fs, method, voicingThres):
     elif method == 'max':
         f0, timeInSec = track_pitch_fftmax(x,blockSize, hopSize, fs)
 
-    rmsDb = extract_rms(x)
+    [xb, t] = block_audio(x, blockSize, hopSize, fs)
+    rmsDb = extract_rms(xb)
     mask = create_voicing_mask(rmsDb, voicingThres)
     f0Adj = apply_voicing_mask(f0, mask)
 
@@ -516,37 +515,39 @@ def executeassign3():
     f0_fftmax, t_fftmax = track_pitch_fftmax(sin, blockSize, hopSize, fs)
     plt.figure(1)
     plt.subplot(1, 2, 1)
-    plt.plot(f0_fftmax, t_fftmax)
+    plt.plot(t_fftmax,f0_fftmax)
     plt.xlabel('Time (s)')
     plt.ylabel('F0 (Hz)')
+    plt.title("Track pitch fftmax")
 
     # error441 = np.abs(f0[:len(f0)//2]-441*np.ones(len(f0//2)))
     # error882 = np.abs(f0[len(f0)//2:]-882*np.ones(len(f0//2)))
     # error = np.concatenate([error441, error882])
 
-
-
-
     error1=errtest(f0_fftmax,t_fftmax)
 
     plt.subplot(1, 2, 2)
-    plt.plot(error1, t_fftmax)
+    plt.plot(t_fftmax,error1)
     plt.xlabel('Time (s)')
     plt.ylabel('Error (Hz)')
+    plt.title("Errors for track pitch fftmax")
+    plt.show()
 
     f0_hps, t_hps = track_pitch_hps(sin, blockSize, hopSize, fs)
     plt.figure(2)
     plt.subplot(1, 2, 1)
-    plt.plot(f0_hps, t_hps)
+    plt.plot(t_hps,f0_hps)
     plt.xlabel('Time (s)')
-    plt.ylabel('Error (Hz)')
+    plt.ylabel('F0 (Hz)')
+    plt.title('Track pitch hps')
 
     error2 = errtest(f0_hps, t_hps)
     plt.subplot(1, 2, 2)
-    plt.plot(error2, t_hps)
+    plt.plot(t_hps, error2)
     plt.xlabel('Time (s)')
     plt.ylabel('Error (Hz)')
-
+    plt.title('Errors for track pitch hps')
+    plt.show()
 
 
 
@@ -556,19 +557,20 @@ def executeassign3():
     hopSize_2 = 512
     f0_2, timeInSec_2 = track_pitch_fftmax(sin, blockSize_2, hopSize_2, fs)
     plt.subplot(1, 2, 1)
-    plt.plot(f0_2, timeInSec_2)
+    plt.plot(timeInSec_2, f0_2)
     plt.xlabel('Time (s)')
     plt.ylabel('F0_2 (Hz)')
-
+    plt.title("Track pitch fftmax (2048)")
     # error441_2 = np.abs(f0[:len(f0_2) // 2] - 441 * np.ones(len(f0_2 // 2)))
     # error882_2 = np.abs(f0[len(f0_2) // 2:] - 882 * np.ones(len(f0_2 // 2)))
     # error_2 = np.concatenate([error441_2, error882_2])
     error3 = errtest(f0_2, timeInSec_2)
     plt.subplot(1, 2, 2)
-    plt.plot(error3, timeInSec_2)
+    plt.plot(timeInSec_2, error3)
     plt.xlabel('Time (s)')
     plt.ylabel('Error (Hz)')
-
+    plt.title("Error for track pitch fftmax (2048)")
+    plt.show()
     # Question E3,4,5,6
     #insert file path
     run_evaluation1('C:/Users/Laney/Documents/6201_comp_mus_analysis/Assignments/Assignment 3/data/trainData/')
