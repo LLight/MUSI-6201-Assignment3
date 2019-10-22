@@ -10,32 +10,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="FileEditorManager">
-    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="hw3_E.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/hw3_E.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="3390">
-              <caret line="230" column="31" selection-start-line="7" selection-end-line="230" selection-end-column="31" />
-              <folding>
-                <element signature="e#0#18#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="ass3solution.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/ass3solution.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="381">
-              <caret line="360" lean-forward="true" selection-start-line="360" selection-end-line="360" />
-              <folding>
-                <element signature="e#267#285#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-    </leaf>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -150,7 +125,6 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="23" width="1280" height="732" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.20095314" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -234,22 +208,22 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/hw3_E.py">
+    <entry file="file://$PROJECT_DIR$/ass3solution.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3390">
-          <caret line="230" column="31" selection-start-line="7" selection-end-line="230" selection-end-column="31" />
+        <state relative-caret-position="276">
+          <caret line="353" column="55" lean-forward="true" selection-start-line="353" selection-start-column="55" selection-end-line="353" selection-end-column="55" />
           <folding>
-            <element signature="e#0#18#0" expanded="true" />
+            <element signature="e#267#285#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/ass3solution.py">
+    <entry file="file://$PROJECT_DIR$/hw3_E.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="381">
-          <caret line="360" lean-forward="true" selection-start-line="360" selection-end-line="360" />
+        <state relative-caret-position="453">
+          <caret line="230" column="31" selection-start-line="7" selection-end-line="230" selection-end-column="31" />
           <folding>
-            <element signature="e#267#285#0" expanded="true" />
+            <element signature="e#0#18#0" expanded="true" />
           </folding>
         </state>
       </provider>
