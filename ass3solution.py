@@ -582,3 +582,20 @@ if __name__ == "__main__":
     executeassign3()
 
 
+def track_pitch_mod(x, blockSize, hopSize, fs):
+    [xb, t] = block_audio(x, blockSize, hopSize, fs)
+
+    # init result
+    f0 = np.zeros(xb.shape[0]
+                  )
+    # compute acf
+    for n in range(0, xb.shape[0]):
+        r = comp_acf(xb[n, :])
+        f0[n] = get_f0_from_acf(r, fs)
+
+    rmsDb = extract_rms(xb)
+    mask = create_voicing_mask(rmsDb, voicingThres)
+    f0 = apply_voicing_mask(f0, mask)
+
+    return (f0, t)
+
